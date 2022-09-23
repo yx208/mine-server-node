@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.5.2/dist/socket.io.js"></script>
+    <style>
+
+        .input {
+            outline: none;
+            box-sizing: border-box;
+            display: inline-block;
+            min-width: 40px;
+            padding: 4px 12px;
+            color: #000000d9;
+            font-size: 16px;
+            line-height: 1.58;
+            background-color: #fff;
+            border: 1px solid #d9d9d9;
+            border-radius: 2px;
+            transition: all .3s;
+        }
+
+        .button {
+            user-select: none;
+            outline: none;
+            cursor: pointer;
+            touch-action: manipulation;
+            text-transform: none;
+            -webkit-tap-highlight-color: transparent;
+            display: inline-block;
+            line-height: 1.58;
+            white-space: nowrap;
+            text-align: center;
+            height: 35px;
+            padding: 4px 16px;
+            font-weight: 400;
+            font-size: 14px;
+            border-radius: 2px;
+            color: #fff;
+            background: #277dd4;
+            border: none;
+            transition: all .3s cubic-bezier(.645, .045, .355, 1);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="room-name">13254646</div>
+
+    <div style="padding: 4px 0; display: flex; align-items: center; gap: 10px">
+        <input class="input" type="text" id="room" placeholder="Room" />
+        <button class="button" onclick="createRoom()">创建</button>
+        <button class="button" onclick="joinRoom()">加入</button>
+    </div>
+    <div style="padding: 4px 0; display: flex; align-items: center; gap: 10px">
+        <input class="input" type="text" id="message" placeholder="Message" />
+        <button class="button" onclick="sendMessage()">发送</button>
+    </div>
+
+    <script>
+
+        const room = document.getElementById('room');
+        const message = document.getElementById('message');
+        const roomName = document.getElementById('room-name');
+
+        const socket = io("ws://127.0.0.1:2333");
+
+        socket.on('hello', () => {
+            console.log('hello');
+        });
+
+        socket.on('connect', () => {
+            roomName.innerText = socket.id;
+        });
+
+        socket.on('flipGrid', (event) => {
+            console.log('flipGrid', event);
+        });
+
+        function joinRoom() {
+            socket.emit('joinRoom', room.value, response => {
+                console.log(response);
+            });
+        }
+
+        function sendMessage() {
+            socket.emit('flipGrid', {
+                row: 10,
+                col: 10
+            }, (event) => {
+                console.log(event);
+            });
+        }
+
+        function createRoom() {
+            socket.emit('createRoom', Date.now() + "", response => {
+                console.log(response.data);
+            });
+        }
+
+    </script>
+
+</body>
+</html>
