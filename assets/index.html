@@ -78,6 +78,10 @@
             console.log('flipGrid', event);
         });
 
+        socket.on('unlock', () => {
+            console.log('unlock');
+        });
+
         function joinRoom() {
             socket.emit('joinRoom', room.value, response => {
                 console.log(response);
