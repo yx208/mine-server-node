@@ -19,32 +19,40 @@ function successMessage(data, message) {
 }
 
 io.on('connection', (socket) => {
+
     socket.once('disconnect', () => {
         const room = socket.belongRoom;
         if (room) {
             // 离开这个房间
             socket.leave(room);
-            const roomList = roomMap.get(room);
-            if (roomList) {
-                // 房间人数为 0，删除房间
-                roomList.delete(socket.id);
-                if (roomList.size === 0) {
+            const roomInfo = roomMap.get(room);
+            if (roomInfo) {
+                roomInfo.count--;
+                roomInfo.users.delete(socket.id);
+                if (roomInfo.count === 0) {
                     roomMap.delete(room);
+                } else /* 其中一个退出游戏 */ {
+                    io.in(room).emit('gameClose');
                 }
             }
         }
     });
 
-    socket.on('createRoom', (room, callback) => {
+    socket.on('createRoom', (message, callback) => {
+
+        const { room, row, col } = message;
 
         if (roomMap.has(room)) {
             callback?.(exceptionMessage('房间已存在'));
             return;
         }
 
-        let list = new Set();
-        list.add(socket.id);
-        roomMap.set(room, list);
+        const list = new Set(); list.add(socket.id);
+        roomMap.set(room, {
+            layout: { row, col },
+            count: 1,
+            users: list
+        });
 
         socket.belongRoom = room;
         socket.join(room);
@@ -52,7 +60,9 @@ io.on('connection', (socket) => {
         callback?.(successMessage(room));
     });
 
-    socket.on('joinRoom', async (room, callback) => {
+    socket.on('joinRoom', async (message, callback) => {
+
+        const { room } = message
 
         // 房间号是否合法
         if (typeof room !== 'string' && typeof room !== 'number') {
@@ -66,20 +76,21 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 判断是否有这个房间
+        // 判断是否加入房间
         if (socket.belongRoom) {
             callback?.(exceptionMessage(socket.belongRoom === room ? '已在这个房间' : '已加入其他房间'));
             return;
         }
 
         // 房间是否满人
-        if (roomMap.get(room).size >= 2) {
+        if (roomMap.get(room).count >= 2) {
             callback?.(exceptionMessage('房间已满人'));
             return;
         }
 
         socket.join(room);
-        roomMap.get(room).add(socket.id);
+        roomMap.get(room).count++;
+        roomMap.get(room).users.add(socket.id);
 
         // 把房间名称保存在实例
         socket.belongRoom = room;
@@ -89,28 +100,14 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('syncAction', { type: 'unlock' });
     });
 
-    socket.on('flipGrid', (message, callback) => {
-        if (socket.belongRoom) {
-            socket.broadcast.emit('flipGrid', successMessage(message));
-            callback?.(successMessage());
-        }
-    });
-
-    socket.on('gameOver', () => {
-        socket.broadcast.emit('gameOver');
-    });
-
-    socket.on('shareMap', (map) => {
-        socket.broadcast.emit('shareMap', map);
-    });
-
-    socket.on('unlock', () => {
-        socket.broadcast.emit('unlock');
+    socket.on('reset', (layout) => {
+        socket.broadcast.emit('reset', layout);
     });
 
     socket.on('syncAction', (message) => {
         socket.broadcast.emit('syncAction', message);
     });
+
 });
 
-httpServer.listen(2333, '0.0.0.0');
+httpServer.listen(2333);
